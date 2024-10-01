@@ -118,6 +118,34 @@ class JavaMethodCall(JavaExpression):
         receiver_type = self.receiver.static_type()
         method = receiver_type.method_named(self.method_name)
         return method.return_type
+    
+    def check_types(self):
+        receiver_type = self.receiver.static_type()
+        
+        actual_arguments = []
+        
+        for arg in self.args:
+            actual_arguments.append(arg.static_type())
+        
+        try:
+            method = receiver_type.method_named(self.method_name)
+        except:
+            raise NoSuchJavaMethod(f"Type {receiver_type.name} does not have methods")
+        
+        if len(self.args) != len(method.parameter_types):
+            raise JavaArgumentCountError(
+                f"Wrong number of arguments for {receiver_type.name}.{self.method_name}(): "
+                f"expected {len(method.parameter_types)}, got {len(self.args)}"
+            )
+            
+        arg_types = [arg.static_type() for arg in self.args]
+        param_types = method.parameter_types
+        for i, (arg_type, param_type) in enumerate(zip(arg_types, param_types)):
+            if not arg_type.is_subtype_of(param_type):
+                raise JavaTypeMismatchError(
+                    f"{receiver_type.name}.{self.method_name}() expects arguments of type {_names(method.parameter_types)}, but got {_names(actual_arguments)}"
+                )
+
 
 class JavaConstructorCall(JavaExpression):
     """
